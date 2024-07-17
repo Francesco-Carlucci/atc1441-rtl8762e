@@ -393,6 +393,17 @@
             if (dataIn[1] != 0)
               addLog("Battery at: " + dataIn[1] + "%");
             break;
+          case 0x16:
+            switch (dataIn[1]) {
+              case 0x01:
+                let enabled = !!dataIn[2];
+                let interval = dataIn[3];
+                document.querySelector("#HeartRateSettingEnabled").checked = enabled;
+                document.querySelector("#HeartRateSettingInterval").value = interval;
+                addLog("Heart Rate Settings: " + enabled + " interval: " + interval);  
+                break
+            }
+            break;
           case 0xA1:
             if (dataIn[1] == 1) {
               addLog("Raw Blood: " + int16((dataIn[2] << 8) | dataIn[3]) + " Max:" + dataIn[5] + " Max:" + dataIn[7] + " Max:" + dataIn[9]);
@@ -542,8 +553,16 @@
           bleDevice.gatt.disconnect();
       }
       else {
+        let filters = [];
+        if (document.querySelector('#connectR02_prefix').checked) {
+          filters.push({namePrefix: 'R02_'});
+        }
         connectTrys = 0;
-        navigator.bluetooth.requestDevice({ optionalServices: ['de5bf728-d711-4e47-af26-65e3012a5dc7', '6e40fff0-b5a3-f393-e0a9-e50e24dcca9e'], acceptAllDevices: true }).then(device => {
+        navigator.bluetooth.requestDevice({
+          optionalServices: ['de5bf728-d711-4e47-af26-65e3012a5dc7', '6e40fff0-b5a3-f393-e0a9-e50e24dcca9e'],
+          acceptAllDevices: filters.length > 0 ? false : true,
+          ...(filters.length ? {filters} : {}),
+        }).then(device => {
           device.addEventListener('gattserverdisconnected', disconnect);
           bleDevice = device;
           connect();
@@ -756,6 +775,7 @@
     Detailed Infos: <a href="https://github.com/atc1441/ATC_RF03_Ring"
       target="_blank">https://github.com/atc1441/ATC_RF03_Ring</a><br>
   </div>
+  <input type="checkbox" id="connectR02_prefix">Only show R02 rings<br>
   <button id="connectbutton" type="button" onclick="preConnect();">Connect</button>
   <button type="button" onclick="reConnect();">Reconnect</button>
   <button type="button" onclick="document.getElementById('log').innerHTML = '';">Clear Log</button>
@@ -791,6 +811,11 @@
     <input type="text" id="cmdSTXT" value="03" onkeydown="handleKeyPressArray(event)">
     <button type="button" onclick="sendDataArray(hexToBytes(document.getElementById('cmdSTXT').value));">Send Setting
       CMD</button><br><br>
+
+    <button type="button" onclick="sendDataArray(hexToBytes('1601'));">Get HeartRateSetting</button><br><br>
+    <input type="checkbox" id="HeartRateSettingEnabled"> enabled
+    <input type="text" id="HeartRateSettingInterval"> interval
+    <button type="button" onclick="sendDataArray(hexToBytes('1601'));">Set HeartRateSetting</button><br><br>
 
     <label for="cmdTXT">Command:</label>
     <input type="text" id="cmdTXT" value="2A" onkeydown="handleKeyPressCmd(event)">
